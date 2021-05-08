@@ -9,3 +9,6 @@ $ npx react-native run-android
 ```
 $ clj -M -m krell.main -co build.edn -r
 ```
+
+## Note
+Installing node v14.3.0 from nvm seems to have solved the issue `Couldn't find variable: cljs`
