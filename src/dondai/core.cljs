@@ -6,7 +6,7 @@
             [dondai.subs :as subs]
             [dondai.events :as events]
             [dondai.i18n :as i18n]
-            [cljs.core.async :refer [go]]
+            [cljs.core.async :refer [go chan <! >!] ]
             [cljs.core.async.interop :refer-macros [<p!]]
             [dondai.storage :as sto]
             ))
@@ -153,10 +153,6 @@
   (.-length (.-rows res)))
 
 (defn rows [res]
-  (log res)
-  (log (prn-str `(into []
-                       (map (fn [i] (res-item res i))
-                            (range ~(res-length res))))))
   (into []
         (map (fn [i] (res-item res i))
              (range (res-length res)))))
@@ -167,11 +163,12 @@
      (log "initialize db success, starting transaction")
      (sto/in-transaction
           (fn [tx]
-            (log "fetching tasks")
-            (go (let [tasks (<p! (sto/fetch-tasks tx
-                                                  :on-success #(dispatch  [:set-tasks (rows %2)])
-                                                  :on-error #(log "fetch error")))]
-                  (log "tasks" (pr-str tasks)))))))
+            (let [tasks-chan (chan)]
+              (sto/fetch-tasks tx
+                               :on-success #(go (>! tasks-chan (rows %2)))
+                               :on-error #(log "fetch error"))
+              (go (let [tasks (<! tasks-chan)]
+                    (dispatch  [:set-tasks tasks])))))))
    #(log "init DB failed")))
 
 (defn ^:export -main [& args]
