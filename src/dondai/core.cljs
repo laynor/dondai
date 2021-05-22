@@ -6,7 +6,8 @@
             [dondai.subs :as subs]
             [dondai.events :as events]
             [dondai.i18n :as i18n]
-            ;; [react-native-sqlite-storage :as sqlite]
+            [cljs.core.async :refer [go]]
+            [cljs.core.async.interop :refer-macros [<p!]]
             [dondai.storage :as sto]
             ))
 
@@ -120,16 +121,18 @@
                                     descr @(rf/subscribe [:new-task-description])]
                                 (prn title descr)
                                 (sto/in-transaction
-                                 (fn [tx] (sto/add-task tx title descr 60
-                                                        :on-success (fn [tx _res]
-                                                                      (sto/fetch-tasks
-                                                                       tx
-                                                                       :on-success (fn [_ res]
-                                                                                     (log (js->clj res))
-                                                                                     ;; (dispatch [:set-tasks])
-                                                                                     ))
-                                                                      )
-                                                        )))
+                                 (fn [tx]
+                                   (sto/add-task tx title descr 60
+                                                 :on-success (fn [tx _res]
+                                                               (sto/fetch-tasks
+                                                                tx
+                                                                :on-success (fn [_ res]
+                                                                              (log (js->clj res))
+                                                                              (dispatch [:set-tasks (rows res)])
+                                                                              (dispatch [:hide-create-dialog])
+                                                                              )))
+                                                 :on-error (fn [& args](log "add task error" args))
+                                                 )))
                                 (log ">>>>>>>>>>>>>>." title descr))}
      (i18n/tr :new-task-dialog/save)]
     ]
@@ -144,13 +147,35 @@
   [rn/view {:style {:flex 1 :align-items "center" :justify-content "center"}}
    [rn/text {:style {:font-size 50}} "Hello Mist Krell!"]])
 
-;; (defn app []
-;;   [:> rnp/Provider
-;;    [:> rnp/Card
-;;     [:> rnp/Card.Title {:style {:task-card styles}
-;;                         :title "mantani"}]]])
+(defn res-item [res i]
+  (.item (.-rows res) i))
+
+(defn res-length [res i]
+  (.-length (.-rows res)))
+
+(defn rows [res]
+  (log res)
+  (log (prn-str `(into []
+                       (map (fn [i] (res-item res i))
+                            (range ~(res-length res))))))
+  (into []
+        (map (fn [i] (res-item res i))
+             (range (res-length res)))))
+
+(defn initialize-state-from-db []
+  (sto/initdb
+   (fn [& args]
+     (log "initialize db success, starting transaction")
+     (sto/in-transaction
+          (fn [tx]
+            (log "fetching tasks")
+            (go (let [tasks (<p! (sto/fetch-tasks tx
+                                                  :on-success #(dispatch  [:set-tasks (rows %2)])
+                                                  :on-error #(log "fetch error")))]
+                  (log "tasks" (pr-str tasks)))))))
+   #(log "init DB failed")))
 
 (defn ^:export -main [& args]
-  (sto/initdb #(log "init DB failed"))
   (rf/dispatch-sync [:initialize-db])
+  (initialize-state-from-db)
   (r/as-element [root]))

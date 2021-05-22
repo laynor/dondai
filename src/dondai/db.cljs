@@ -13,18 +13,6 @@
 ;; initial state of app-db
 (defonce app-db {:counter 0
                  :create-task-dialog-visible? false
-                 :tasks [{:id 0
-                          :title "Play some guitar"
-                          :allotted-time 30
-                          :description "Play every day, you'll feel and get better!"}
-                         {:id 1
-                          :title "Study Japanese"
-                          :allotted-time 30
-                          :description "You can get better just practicing some time every day :)"}
-
-                         {:id 2
-                          :title "Study Japanese"
-                          :allotted-time 30
-                          :description "You can get better just practicing some time every day :)"}]
+                 :tasks []
                  :new-task-title ""
                  :new-task-description ""})

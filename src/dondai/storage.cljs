@@ -63,24 +63,21 @@
                      allotted_time INTEGER
                    )")
 
-(defn initdb [on-error]
+(defn initdb [on-success on-error]
   (go
     (set! sqlitedb (<p! (s/openDatabase "app.db" "1.0" "Dondai" -1
                                         (fn [& args]
                                           (log "Open database successful" args))
                                         (fn [& args]
                                           (log "Open database failed" args)))))
-    (log "db ==== " sqlitedb)
-    (js* "console.log('======', dondai.storage.sqlitedb.transaction);")
-    (.transaction
-     sqlitedb
-     (fn [tx]
-       (log "tx === "tx)
-       (.executeSql tx create-tasks-table-query []
-                    #(log "task table query created successfully")
-                    on-error))
-     log
-     log)))
+    (<p! (.transaction
+          sqlitedb
+          (fn [tx]
+            (.executeSql tx create-tasks-table-query []
+                         #(log "task table query created successfully")
+                         on-error))
+          log
+          on-success))))
 
 
 (defn add-task [tx title description allotted-time & {:keys [on-success on-error]}]

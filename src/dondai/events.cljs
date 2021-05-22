@@ -85,3 +85,10 @@
               :new-task-title ""
               :create-task-dialog-visible? false))
    ))
+
+(reg-event-db
+ :set-tasks
+ validate-spec
+ (fn [db [_ tasks]]
+   (log "setting tasks to" (prn-str tasks))
+   (assoc db :tasks tasks)))
