@@ -44,7 +44,6 @@
    :centered-dialog {:padding 10
                      :justify-content :center
                      :background-color "#33333333"
-                     ;; :align-items :center
                      :flex-direction :column
                      :flex 1
                      }
