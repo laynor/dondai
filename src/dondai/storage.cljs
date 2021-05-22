@@ -2,11 +2,12 @@
   (:require
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer-macros [<p!]]
-   [react-native-sqlite-storage :as s]))
+   [react-native-sqlite-storage :as s]
+   [dondai.logging :refer [get-logger]]))
 
 (s/enablePromise true)
 
-(def log (.-log js/console))
+(def log (get-logger "dondai.storage"))
 
 (def logsuccess (partial log "success"))
 (def logerror (partial log "error"))

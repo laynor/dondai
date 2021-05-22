@@ -9,6 +9,7 @@
             [cljs.core.async :refer [go chan <! >!] ]
             [cljs.core.async.interop :refer-macros [<p!]]
             [dondai.storage :as sto]
+            [dondai.logging :refer [get-logger] :refer-macros [defloggers]]
             ))
 
 (def styles
@@ -50,16 +51,16 @@
    :barrier {:background-color "#33333333" :width "100%" :height "100%"}
    })
 
-(def log (.-log js/console))
+(defloggers "dondai.core")
 
-(defn render-tasks [task]
+(defn render-task [task]
   (r/as-element
    [rn/view {:style (:task-card styles)}
     [:> rnp/Card
      [:> rnp/Card.Title  {:style (:task-card styles)
-                          :title (.. task -item -title)}]
+                          :title (:title task)}]
      [:> rnp/Card.Content
-      [:> rnp/Paragraph (.. task -item -description)]]]]))
+      [:> rnp/Paragraph (:description task)]]]]))
 
 (defn modal [visibile-if hide-action & children]
   [rn/modal {:animation-type   "fade"
@@ -93,6 +94,25 @@
   (rf/dispatch-sync arg)
   (r/flush))
 
+(defn add-task []
+  (let [title @(rf/subscribe [:new-task-title])
+                                    descr @(rf/subscribe [:new-task-description])]
+                                (prn title descr)
+                                (sto/in-transaction
+                                 (fn [tx]
+                                   (go (log ">> add >> "(prn-str (try (<p!(sto/add-task tx title descr 60
+                                                 :on-success (fn [tx _res]
+                                                               (sto/fetch-tasks
+                                                                tx
+                                                                :on-success (fn [_ res]
+                                                                              (dispatch [:set-tasks (rows res)])
+                                                                              (dispatch [:hide-create-dialog]))))
+                                                 :on-error (fn [& args](log "add task error" args))
+                                                 ))
+                                                                      (catch js/Object e
+                                                                        (log "error" e))))))))
+                                (log ">>>>>>>>>>>>>>." title descr)))
+
 (defn app []
   [rn/view {:style (:container styles)}
    [:> rnp/Appbar.Header {:style {:width "100%"}} ;; {:style (:bottom styles)}
@@ -102,7 +122,7 @@
    [rn/flat-list
     {:data          @(rf/subscribe [:get-tasks])
      :key-extractor (fn [task _] (str (.. task -id)))
-     :renderItem    render-tasks}]
+     :renderItem    (comp render-task :item #(js->clj % :keywordize-keys true))}]
    [dialog (i18n/tr :new-task-dialog/title)
     {:visibile-if [:create-task-dialog-visible?]
      :hide-action [:hide-create-dialog]}
@@ -116,23 +136,7 @@
 
     [:> rnp/Button {:icon "content-save"
                     :mode "contained"
-                    :onPress #(let [title @(rf/subscribe [:new-task-title])
-                                    descr @(rf/subscribe [:new-task-description])]
-                                (prn title descr)
-                                (sto/in-transaction
-                                 (fn [tx]
-                                   (sto/add-task tx title descr 60
-                                                 :on-success (fn [tx _res]
-                                                               (sto/fetch-tasks
-                                                                tx
-                                                                :on-success (fn [_ res]
-                                                                              (log (js->clj res))
-                                                                              (dispatch [:set-tasks (rows res)])
-                                                                              (dispatch [:hide-create-dialog])
-                                                                              )))
-                                                 :on-error (fn [& args](log "add task error" args))
-                                                 )))
-                                (log ">>>>>>>>>>>>>>." title descr))}
+                    :onPress add-task}
      (i18n/tr :new-task-dialog/save)]
     ]
    ])
@@ -147,7 +151,8 @@
    [rn/text {:style {:font-size 50}} "Hello Mist Krell!"]])
 
 (defn res-item [res i]
-  (.item (.-rows res) i))
+  (js->clj (.item (.-rows res) i)
+           :keywordize-keys true))
 
 (defn res-length [res i]
   (.-length (.-rows res)))
@@ -160,7 +165,7 @@
 (defn initialize-state-from-db []
   (sto/initdb
    (fn [& args]
-     (log "initialize db success, starting transaction")
+     (logi "Initialize database: success!")
      (sto/in-transaction
           (fn [tx]
             (let [tasks-chan (chan)]
@@ -168,6 +173,7 @@
                                :on-success #(go (>! tasks-chan (rows %2)))
                                :on-error #(log "fetch error"))
               (go (let [tasks (<! tasks-chan)]
+                    (log "Tasks " (prn-str (into [] (map #(js->clj % :keywordize-keys true) tasks))))
                     (dispatch  [:set-tasks tasks])))))))
    #(log "init DB failed")))
 

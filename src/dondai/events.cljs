@@ -2,14 +2,15 @@
   (:require
    [re-frame.core :refer [reg-event-db after]]
    [clojure.spec.alpha :as s]
-   [dondai.db :as db :refer [app-db]]))
+   [dondai.db :as db :refer [app-db]]
+   [dondai.logging :refer [get-logger]]))
 
 ;; -- Interceptors ------------------------------------------------------------
 ;;
 ;; See https://github.com/Day8/re-frame/blob/master/docs/Interceptors.md
 ;;
 
-(def log (.-log js/console))
+(def log (get-logger "dondai.events"))
 
 (defn check-and-throw
   "Throw an exception if db doesn't have a valid spec."
