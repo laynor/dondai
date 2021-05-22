@@ -94,28 +94,29 @@
   (rf/dispatch-sync arg)
   (r/flush))
 
+(defn refresh-tasks [tx]
+  (sto/fetch-tasks
+   tx
+   :on-success (fn [_ res]
+                 (dispatch [:set-tasks (into [] (:rows res))]))))
+
 (defn add-task []
   (let [title @(rf/subscribe [:new-task-title])
-                                    descr @(rf/subscribe [:new-task-description])]
-                                (prn title descr)
-                                (sto/in-transaction
-                                 (fn [tx]
-                                   (go (log ">> add >> "(prn-str (try (<p!(sto/add-task tx title descr 60
-                                                 :on-success (fn [tx _res]
-                                                               (sto/fetch-tasks
-                                                                tx
-                                                                :on-success (fn [_ res]
-                                                                              (dispatch [:set-tasks (into [] (:rows res))])
-                                                                              (dispatch [:hide-create-dialog]))))
-                                                 :on-error (fn [& args](log "add task error" args))
-                                                 ))
-                                                                      (catch js/Object e
-                                                                        (log "error" e))))))))
-                                (log ">>>>>>>>>>>>>>." title descr)))
+        descr @(rf/subscribe [:new-task-description])]
+    (logi "Adding task " title descr)
+    (sto/in-transaction
+     (fn [tx]
+       (let [ch (chan)])
+       (go (sto/add-task tx title descr 60
+                         :on-success (fn [tx _res]
+                                       (refresh-tasks tx)
+                                       (dispatch [:hide-create-dialog])
+                                       )
+                         :on-error #(loge "add task error" %&)))))))
 
 (defn app []
   [rn/view {:style (:container styles)}
-   [:> rnp/Appbar.Header {:style {:width "100%"}} ;; {:style (:bottom styles)}
+   [:> rnp/Appbar.Header {:style {:width "100%"}}
     [:> rnp/Appbar.Content {:title (i18n/tr :app-title)}]
     [:> rnp/Appbar.Action {:icon    "plus"
                            :onPress #(rf/dispatch [:show-create-dialog])}]]
@@ -140,8 +141,7 @@
                     :mode "contained"
                     :onPress add-task}
      (i18n/tr :new-task-dialog/save)]
-    ]
-   ])
+    ]])
 
 
 (defn root []
@@ -159,15 +159,7 @@
   (sto/initdb
    (fn [& args]
      (logi "Initialize database: success!")
-     (sto/in-transaction
-          (fn [tx]
-            (let [tasks-chan (chan)]
-              (sto/fetch-tasks tx
-                               :on-success #(go (>! tasks-chan (into [] (:rows %2))))
-                               :on-error #(log "fetch error"))
-              (go (let [tasks (<! tasks-chan)]
-                    (log "Tasks " tasks)
-                    (dispatch  [:set-tasks tasks])))))))
+     (sto/in-transaction refresh-tasks))
    #(log "init DB failed")))
 
 (defn ^:export -main [& args]
