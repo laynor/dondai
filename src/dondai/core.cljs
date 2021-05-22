@@ -39,7 +39,7 @@
                  :color       :blue}
    ;; :bottom       {:position :absolute :left 0 :right 0 :bottom 0 :width "100%"}
    :title        {:color :white :font-size 20}
-   :task-card    {:padding 10}
+   :task-card    {:padding 10 :width "100%"}
    :dialog-card    {:padding 32}
    :centered-dialog {:padding 10
                      :justify-content :center
