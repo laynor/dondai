@@ -105,7 +105,7 @@
                                                                (sto/fetch-tasks
                                                                 tx
                                                                 :on-success (fn [_ res]
-                                                                              (dispatch [:set-tasks (rows res)])
+                                                                              (dispatch [:set-tasks (into [] (:rows res))])
                                                                               (dispatch [:hide-create-dialog]))))
                                                  :on-error (fn [& args](log "add task error" args))
                                                  ))
@@ -121,8 +121,10 @@
                            :onPress #(rf/dispatch [:show-create-dialog])}]]
    [rn/flat-list
     {:data          @(rf/subscribe [:get-tasks])
-     :key-extractor (fn [task _] (str (.. task -id)))
-     :renderItem    (comp render-task :item #(js->clj % :keywordize-keys true))}]
+     :key-extractor #(.-id %)
+     :renderItem    (comp render-task
+                          :item
+                          #(js->clj % :keywordize-keys true))}]
    [dialog (i18n/tr :new-task-dialog/title)
     {:visibile-if [:create-task-dialog-visible?]
      :hide-action [:hide-create-dialog]}
@@ -150,17 +152,8 @@
   [rn/view {:style {:flex 1 :align-items "center" :justify-content "center"}}
    [rn/text {:style {:font-size 50}} "Hello Mist Krell!"]])
 
-(defn res-item [res i]
-  (js->clj (.item (.-rows res) i)
-           :keywordize-keys true))
-
-(defn res-length [res i]
-  (.-length (.-rows res)))
-
 (defn rows [res]
-  (into []
-        (map (fn [i] (res-item res i))
-             (range (res-length res)))))
+  (into [] (:rows res)))
 
 (defn initialize-state-from-db []
   (sto/initdb
@@ -170,10 +163,10 @@
           (fn [tx]
             (let [tasks-chan (chan)]
               (sto/fetch-tasks tx
-                               :on-success #(go (>! tasks-chan (rows %2)))
+                               :on-success #(go (>! tasks-chan (into [] (:rows %2))))
                                :on-error #(log "fetch error"))
               (go (let [tasks (<! tasks-chan)]
-                    (log "Tasks " (prn-str (into [] (map #(js->clj % :keywordize-keys true) tasks))))
+                    (log "Tasks " tasks)
                     (dispatch  [:set-tasks tasks])))))))
    #(log "init DB failed")))
 

@@ -24,6 +24,19 @@
                  on-error
                  on-success)))
 
+(defn res-item [res i]
+  (js->clj (.item (.-rows res) i)
+           :keywordize-keys true))
+
+(defn res-length [res i]
+  (.-length (.-rows res)))
+
+(defn res->clj [res]
+  {:rows (map (fn [i] (res-item res i))
+              (range (res-length res)))
+   :length (res-length res)
+   :rows-affected (.-rowsAffected res)
+   :insert-id (.-insertId res)})
 
 (defn sql
   ([transaction query & {:keys [params on-success on-error]
@@ -33,7 +46,7 @@
    (.executeSql transaction
                 query
                 (clj->js params)
-                on-success
+                (fn [tx res] (on-success tx (res->clj res)))
                 on-error)))
 
 (defn add-taskx [& args]
