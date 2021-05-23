@@ -4,3 +4,8 @@
        (def ~(symbol "logi") (get-logger-internal ~name (.-info js/console)))
        (def ~(symbol "logw") (get-logger-internal ~name (.-warn js/console)))
        (def ~(symbol "loge") (get-logger-internal ~name (.-error js/console)))))
+
+(defmacro dbg [o]
+  `(let [o# ~o]
+     (do (~(symbol "log") ~'o "=>" o#)
+         o#)))

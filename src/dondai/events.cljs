@@ -70,6 +70,12 @@
    (assoc db :new-task-description value)))
 
 (reg-event-db
+ :set-new-task-allotted-time
+ validate-spec
+ (fn [db [_ value]]
+   (assoc db :new-task-allotted-time value)))
+
+(reg-event-db
  :save-new-task
  validate-spec
  (fn [db [_ title description allotted-time]]

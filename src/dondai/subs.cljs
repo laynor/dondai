@@ -26,3 +26,8 @@
  :new-task-description
  (fn [db _]
    (:new-task-description db)))
+
+(reg-sub
+ :new-task-allotted-time
+ (fn [db _]
+   (:new-task-allotted-time db)))

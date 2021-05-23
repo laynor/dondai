@@ -8,6 +8,7 @@
         :new-task-dialog {:title "Create new task"
                           :task-title "Title"
                           :description "Description"
+                          :allotted-time "Allotted time"
                           :save "Save"}
         }
    })
