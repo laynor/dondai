@@ -44,11 +44,12 @@
    :dim "#33333333"})
 
 (defn get-color [color]
+  {:pre [(or (nil? color) (string? color) (keyword? color))]
+   :post [(or (nil? %) (string? %))]}
   (condp apply [color]
     nil?     nil
     string?  color
-    keyword? (recur (or (get colors color) (name color)))
-    (throw (str "invalid argument: " (pr-str color)))))
+    keyword? (recur (or (get colors color) (name color)))))
 
 (defn dbg> [o]
   (log "==> " o)
@@ -94,7 +95,9 @@
    })
 
 
-(defn format-time [minutes]
+(defn format-time
+  "Format time like 1h 30m"
+  [minutes]
   (let [m (mod minutes 60)
         h (/ (- minutes m) 60)]
     (str (if (zero? h) "" (str h "h"))
