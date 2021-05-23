@@ -12,11 +12,15 @@
             [cljs.core.async.interop :refer-macros [<p!]]
             [dondai.storage :as sto]
             [dondai.logging :refer [get-logger] :refer-macros [defloggers dbg]]
+            [dondai.icons :refer [MaterialIcons MaterialCommunityIcons]]
             ))
+
+(defloggers "dondai.core")
 
 (def colors
   {:base-purple "#3F51B5"
    :app-bar :base-purple
+   :play-icon-color :white
    :dim "#33333333"})
 
 (defn get-color [color]
@@ -92,7 +96,13 @@
        [rn/view {:style {:flexGrow 1}} [:> rnp/Paragraph (:description task)]]
        [:> rnp/Chip {:style {:font-size 22 :background-color (get-color :base-purple)}
                      :theme {:colors {:enabled "yellow" :disabled "green" :text "yellow" :selected "yellow"}}
-                     :icon "play" ;; "play"
+                     :icon (fn [& args]
+                             (try
+                               (r/as-element
+                                [:> MaterialIcons {:name "play-arrow" :size 20
+                                                   :color (get-color :play-icon-color)}])
+                               (catch js/Object e
+                                 "play")))
                      :disabled false
                      :selected true
                      :selectedColor "yellow"
