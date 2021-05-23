@@ -17,6 +17,26 @@
 
 (defloggers "dondai.core")
 
+(defn dispatch [arg]
+  ;; Flush here is needed to avoid "flickering"
+  ;; It seems the state is updated too late and
+  ;; react native gets the old value after changing
+  ;; its internal text input state, so it renders
+  ;; the old db state for a short lapse before the
+  ;; set-new-task-title action is actually executed
+  ;; This might be the same issue faced in the dialog
+  ;; before switching to the pure react-native implementation
+  ;; XXX it might be worthwhile to make a `rf/dispatch` wrapper
+  ;;     that calls r/flush right after dispatch.
+  (rf/dispatch-sync arg)
+  (r/flush))
+
+(defn mapify-param [f]
+  (fn [obj]
+    (let [clj-map (js->clj obj :keywordize-keys true)]
+      (f clj-map))))
+
+
 (def colors
   {:base-purple "#3F51B5"
    :app-bar :base-purple
@@ -74,8 +94,6 @@
    })
 
 
-(def time-circle-radius 30)
-
 (defn format-time [minutes]
   (let [m (mod minutes 60)
         h (/ (- minutes m) 60)]
@@ -85,24 +103,23 @@
 
 (defn render-task [task]
   (r/as-element
-
    [rn/view {:style (:task-card styles)}
     [:> rnp/Card
      [:> rnp/Card.Title  {:style (:task-card styles)
                           :title (:title task)}]
      [:> rnp/Card.Content
-
       [rn/view {:style {:flexDirection "row" :width "100%"}}
        [rn/view {:style {:flexGrow 1}} [:> rnp/Paragraph (:description task)]]
        [:> rnp/Chip {:style {:font-size 22 :background-color (get-color :base-purple)}
                      :theme {:colors {:enabled "yellow" :disabled "green" :text "yellow" :selected "yellow"}}
-                     :icon (fn [& args]
-                             (try
-                               (r/as-element
-                                [:> MaterialIcons {:name "play-arrow" :size 20
-                                                   :color (get-color :play-icon-color)}])
-                               (catch js/Object e
-                                 "play")))
+                     :icon (mapify-param
+                            (fn [{size :size color :color}]
+                              (try
+                                (r/as-element
+                                 [:> MaterialIcons {:name "play-arrow" :size size
+                                                    :color (get-color :play-icon-color)}])
+                                (catch js/Object e
+                                  "play"))))
                      :disabled false
                      :selected true
                      :selectedColor "yellow"
@@ -128,20 +145,6 @@
     [:> rnp/Card.Title  {:style (:dialog-card styles)
                          :title title}]
     (into [] (concat [:> rnp/Card.Content] children))]])
-
-(defn dispatch [arg]
-  ;; Flush here is needed to avoid "flickering"
-  ;; It seems the state is updated too late and
-  ;; react native gets the old value after changing
-  ;; its internal text input state, so it renders
-  ;; the old db state for a short lapse before the
-  ;; set-new-task-title action is actually executed
-  ;; This might be the same issue faced in the dialog
-  ;; before switching to the pure react-native implementation
-  ;; XXX it might be worthwhile to make a `rf/dispatch` wrapper
-  ;;     that calls r/flush right after dispatch.
-  (rf/dispatch-sync arg)
-  (r/flush))
 
 (defn refresh-tasks [tx]
   (sto/fetch-tasks
@@ -203,10 +206,6 @@
 (defn root []
   [:> rnp/Provider
    [app]])
-
-(defn hello []
-  [rn/view {:style {:flex 1 :align-items "center" :justify-content "center"}}
-   [rn/text {:style {:font-size 50}} "Hello Mist Krell!"]])
 
 (defn rows [res]
   (into [] (:rows res)))
